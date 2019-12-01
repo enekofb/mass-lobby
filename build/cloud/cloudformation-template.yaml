@@ -1,0 +1,20 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: MassLobby Cloudformation Template
+Resources:
+  MassLobbyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: "Policy"
+      BillingMode: "PROVISIONED"
+      Tags:
+        - Key: "Application"
+          Value: "mass lobby"
+      AttributeDefinitions:
+        - AttributeName: "PolicyId"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "PolicyId"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1

@@ -2,14 +2,25 @@
 SHELL := /bin/bash
 .SHELLFLAGS := -ec
 
+## General VARS
+VERSION ?= dev
+APPLICATION_NAME= mass-lobby
+AWS_PROFILE=enekofb
+AWS_ACCOUNT_ID=777171359344
+
+## Builder VARS
 DOCKER_REGISTRY ?= docker.io
 DOCKER_ORG = enekofb
-DOCKER_REPO = mass-lobby-builder
-VERSION ?= dev
+DOCKER_REPO = ${APPLICATION}-builder
+
+## Build VARS
+BUILD_CLOUD_DIRECTORY=build/cloud
+CLOUD_FORMATION_TEMPLATE_FILENAME=cloudformation-template.yaml
+CLOUD_FORMATION_TEMPLATE_PATH=../${BUILD_CLOUD_DIRECTORY}/${CLOUD_FORMATION_TEMPLATE_FILENAME}
 
 default: test
 
-## builder targets
+## builder 
 builder-build:
 	cd ../build/builder &&  docker build . -t $(DOCKER_REGISTRY)/$(DOCKER_ORG)/$(DOCKER_REPO):$(VERSION)
 
@@ -20,13 +31,22 @@ builder: build-builder push-builder
 
 
 ## build
+cloud-deploy: 
+	aws cloudformation deploy \
+	--profile ${AWS_PROFILE} \
+	--stack-name ${APPLICATION_NAME}-stack \
+	--template-file ${CLOUD_FORMATION_TEMPLATE_PATH} \
+	--capabilities CAPABILITY_NAMED_IAM \
+	--parameter-overrides \
+	BucketName=${AWS_ACCOUNT_ID}-${APPLICATION_NAME}-cloudformation-bucket
 
-
-build-dynamodb: builder
-
-# bin generates the releaseable binaries for Terraform
-bin: fmtcheck generate
-	@TF_RELEASE=1 sh -c "'$(CURDIR)/scripts/build.sh'"
+cloud-delete: 
+	aws cloudformation delete-stack \
+	--profile ${AWS_PROFILE} \
+	--stack-name ${APPLICATION_NAME}-stack
+	aws cloudformation wait stack-delete-complete \
+	--profile ${AWS_PROFILE} \
+	--stack-name ${APPLICATION_NAME}-stack
 
 # dev creates binaries for testing Terraform locally. These are put
 # into ./bin/ as well as $GOPATH/bin
