@@ -9,6 +9,7 @@ AWS_PROFILE=enekofb
 AWS_ACCOUNT_ID=777171359344
 
 ## Builder VARS
+BUILD_BUILDER_DIRECTORY=build/builder
 DOCKER_REGISTRY ?= docker.io
 DOCKER_ORG = enekofb
 DOCKER_REPO = ${APPLICATION}-builder
@@ -16,18 +17,22 @@ DOCKER_REPO = ${APPLICATION}-builder
 ## Build VARS
 BUILD_CLOUD_DIRECTORY=build/cloud
 CLOUD_FORMATION_TEMPLATE_FILENAME=cloudformation-template.yaml
-CLOUD_FORMATION_TEMPLATE_PATH=../${BUILD_CLOUD_DIRECTORY}/${CLOUD_FORMATION_TEMPLATE_FILENAME}
+CLOUD_FORMATION_TEMPLATE_PATH=${BUILD_CLOUD_DIRECTORY}/${CLOUD_FORMATION_TEMPLATE_FILENAME}
 
 default: test
 
 ## builder 
 builder-build:
-	cd ../build/builder &&  docker build . -t $(DOCKER_REGISTRY)/$(DOCKER_ORG)/$(DOCKER_REPO):$(VERSION)
+	cd ${BUILD_BUILDER_DIRECTORY} &&  docker build . -t $(DOCKER_REGISTRY)/$(DOCKER_ORG)/$(DOCKER_REPO):$(VERSION)
 
 builder-push:
 	docker push  $(DOCKER_REGISTRY)/$(DOCKER_ORG)/$(DOCKER_REPO):$(VERSION)
 
 builder: build-builder push-builder	
+
+test:
+	@echo "Running all acceptance tests"
+	go test -v -run TestHcomDecaf
 
 
 ## build
