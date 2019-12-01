@@ -12,6 +12,17 @@ type DynamoDB struct {
 	svc *dynamodb.Client
 }
 
+func NewDefaultDynamoDB() (DynamoDB, error) {
+
+	defaultConfig, err := NewDefaultConfig()
+
+	if err != nil {
+		return DynamoDB{}, errors.Wrap(err, "could not create default config")
+	}
+
+	return DynamoDB{svc: dynamodb.New(defaultConfig.awsConfig)}, nil
+}
+
 func (db DynamoDB) DescribeTable(tableName string) (string, error) {
 
 	inputRequest := &dynamodb.DescribeTableInput{
@@ -30,33 +41,24 @@ func (db DynamoDB) DescribeTable(tableName string) (string, error) {
 
 }
 
-func NewDefaultDynamoDB() (DynamoDB, error) {
+func (db DynamoDB) PutItem(tableName string, itemKey string, itemValue string) (string, error) {
 
-	defaultConfig, err := NewDefaultConfig()
+	inputRequest := &dynamodb.PutItemInput{
+		TableName: aws.String(tableName),
+		Item: map[string]dynamodb.AttributeValue{
+			itemKey: {
+				S: aws.String(itemValue),
+			},
+		},
+	}
+	putItemRequest := db.svc.PutItemRequest(inputRequest)
+
+	putItemResponse, err := putItemRequest.Send(context.Background())
 
 	if err != nil {
-		return DynamoDB{}, errors.Wrap(err, "could not create default config")
+		return "", errors.Wrap(err, fmt.Sprintf("could not put item '%s' into table: '%s'", itemKey, tableName))
 	}
 
-	return DynamoDB{svc: dynamodb.New(defaultConfig.awsConfig)}, nil
-}
+	return aws.StringValue(putItemResponse.Attributes[itemKey].S), nil
 
-//func GetSecretValue(name string) (string, error) {
-//
-//	sess := session.Must(session.NewSession(aws.NewConfig()))
-//
-//	svc := secretsmanager.New(sess)
-//	input := &secretsmanager.GetSecretValueInput{
-//		SecretId: aws.String(name),
-//	}
-//
-//	result, err := svc.GetSecretValue(input)
-//	if err != nil {
-//		if aerr, ok := err.(awserr.Error); ok {
-//			return "", errors.Wrap(err, fmt.Sprintf("%s:%s", aerr.Code(), aerr.Message()))
-//		}
-//		return "", err
-//	}
-//
-//	return aws.StringValue(result.SecretString), nil
-//}
+}
