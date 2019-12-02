@@ -8,6 +8,9 @@ APPLICATION_NAME= mass-lobby
 AWS_PROFILE=enekofb
 AWS_ACCOUNT_ID=777171359344
 
+## Test VARS
+ACCEPTANCE_TESTS_DIRECTORY=acceptance
+
 ## Builder VARS
 BUILD_BUILDER_DIRECTORY=build/builder
 DOCKER_REGISTRY ?= docker.io
@@ -28,12 +31,9 @@ builder-build:
 builder-push:
 	docker push  $(DOCKER_REGISTRY)/$(DOCKER_ORG)/$(DOCKER_REPO):$(VERSION)
 
-builder: build-builder push-builder	
-
-test:
-	@echo "Running all acceptance tests"
-	go test -v -run TestHcomDecaf
-
+## test
+acceptance-test:
+	cd ${ACCEPTANCE_TESTS_DIRECTORY} &&  go test -v 
 
 ## build
 cloud-deploy: 
@@ -52,81 +52,6 @@ cloud-delete:
 	aws cloudformation wait stack-delete-complete \
 	--profile ${AWS_PROFILE} \
 	--stack-name ${APPLICATION_NAME}-stack
-
-# dev creates binaries for testing Terraform locally. These are put
-# into ./bin/ as well as $GOPATH/bin
-dev: fmtcheck generate
-	go install -mod=vendor .
-
-quickdev: generate
-	go install -mod=vendor .
-
-# Shorthand for building and installing just one plugin for local testing.
-# Run as (for example): make plugin-dev PLUGIN=provider-aws
-plugin-dev: generate
-	go install github.com/hashicorp/terraform/builtin/bins/$(PLUGIN)
-	mv $(GOPATH)/bin/$(PLUGIN) $(GOPATH)/bin/terraform-$(PLUGIN)
-
-# test runs the unit tests
-# we run this one package at a time here because running the entire suite in
-# one command creates memory usage issues when running in Travis-CI.
-test: fmtcheck generate
-	go list -mod=vendor $(TEST) | xargs -t -n4 go test $(TESTARGS) -mod=vendor -timeout=2m -parallel=4
-
-# testacc runs acceptance tests
-testacc: fmtcheck generate
-	@if [ "$(TEST)" = "./..." ]; then \
-		echo "ERROR: Set TEST to a specific package. For example,"; \
-		echo "  make testacc TEST=./builtin/providers/test"; \
-		exit 1; \
-	fi
-	TF_ACC=1 go test $(TEST) -v $(TESTARGS) -mod=vendor -timeout 120m
-
-# e2etest runs the end-to-end tests against a generated Terraform binary
-# The TF_ACC here allows network access, but does not require any special
-# credentials since the e2etests use local-only providers such as "null".
-e2etest: generate
-	TF_ACC=1 go test -mod=vendor -v ./command/e2etest
-
-test-compile: fmtcheck generate
-	@if [ "$(TEST)" = "./..." ]; then \
-		echo "ERROR: Set TEST to a specific package. For example,"; \
-		echo "  make test-compile TEST=./builtin/providers/test"; \
-		exit 1; \
-	fi
-	go test -mod=vendor -c $(TEST) $(TESTARGS)
-
-# testrace runs the race checker
-testrace: fmtcheck generate
-	TF_ACC= go test -mod=vendor -race $(TEST) $(TESTARGS)
-
-cover:
-	go test $(TEST) -coverprofile=coverage.out
-	go tool cover -html=coverage.out
-	rm coverage.out
-
-# generate runs `go generate` to build the dynamically generated
-# source files, except the protobuf stubs which are built instead with
-# "make protobuf".
-generate:
-	GOFLAGS=-mod=vendor go generate ./...
-	# go fmt doesn't support -mod=vendor but it still wants to populate the
-	# module cache with everything in go.mod even though formatting requires
-	# no dependencies, and so we're disabling modules mode for this right
-	# now until the "go fmt" behavior is rationalized to either support the
-	# -mod= argument or _not_ try to install things.
-	GO111MODULE=off go fmt command/internal_plugin_list.go > /dev/null
-
-# We separate the protobuf generation because most development tasks on
-# Terraform do not involve changing protobuf files and protoc is not a
-# go-gettable dependency and so getting it installed can be inconvenient.
-#
-# If you are working on changes to protobuf interfaces you may either use
-# this target or run the individual scripts below directly.
-protobuf:
-	bash scripts/protobuf-check.sh
-	bash internal/tfplugin5/generate.sh
-	bash plans/internal/planproto/generate.sh
 
 fmt:
 	gofmt -w $(GOFMT_FILES)
