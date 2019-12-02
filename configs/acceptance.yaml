@@ -1,0 +1,2 @@
+AWS_PROFILE: enekofb
+PolicyEndpointUrl: "https://dumzel8kt9.execute-api.eu-west-1.amazonaws.com/acceptance/policy/test"

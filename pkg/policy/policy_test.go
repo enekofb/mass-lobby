@@ -22,6 +22,9 @@ func TestICouldSearchAllPolicies(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, policyClient)
 
-	policyClient.searchPolicies()
+	policies, err := policyClient.searchPolicies()
+
+	require.Nil(t, err)
+	require.NotNil(t, policies)
 
 }
