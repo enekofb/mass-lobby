@@ -7,7 +7,43 @@ Parameters:
     Default: "mass-lobby-function"
 
 Resources:
-  
+  MassLobbyMasterKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: mass lobby master key
+      Enabled: true
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: MassLobbyMasterKeyPolicy
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Join
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':user/enekofb'
+            Action: 'kms:*'
+            Resource: '*'
+      KeyUsage: ENCRYPT_DECRYPT
+  MassLobbyMasterKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/mass-lobby
+      TargetKeyId:
+        Ref: MassLobbyMasterKey
+  MassLobbyS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: "777171359344-mass-lobby-bucket"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt "MassLobbyMasterKey.Arn"
+      AccessControl: Private
   MassLobbyTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -129,6 +165,7 @@ Resources:
 Outputs:
   MassLobbyApiInvokeURL:
     Value: !Sub "https://${MassLobbyApi}.execute-api.${AWS::Region}.amazonaws.com/acceptance"
-
+  MassLobbyMasterKeyArn:
+    Value: !GetAtt "MassLobbyMasterKey.Arn"
   lambdaArn:
     Value: !GetAtt "lambdaFunction.Arn"
