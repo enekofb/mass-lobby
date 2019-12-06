@@ -1,6 +1,8 @@
 version: 0.2
-phases:
+phases: 
   install:
+    runtime-versions:
+      golang: 1.13
     commands:
       - echo Entered the install phase...
   pre_build:
